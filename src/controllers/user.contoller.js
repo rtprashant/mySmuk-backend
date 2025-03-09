@@ -5,6 +5,8 @@ import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import generateOtp from "../utils/otp.js";
 import sendMail from "../utils/sendMail.js";
+import oauth2Client from "../utils/googleConfig.js";
+import axios from 'axios'
 
 const genrateAccessAndRefreshToken = async function (userId) {
     const user = await User.findById(userId)
@@ -231,7 +233,7 @@ const userLogin = asyncHandler(async (req, res) => {
         )
         if (!user) {
             throw new apiError(
-               
+
                 "User not found please Sign up",
                 404,
             )
@@ -299,29 +301,194 @@ const userLogin = asyncHandler(async (req, res) => {
 
 })
 
+const resendOtp = asyncHandler(async (req, res) => {
+    const { userId } = req.params
+    try {
+        const user = await User.findById(userId)
+        const email = user.email
+        const otp = await generateOtp(email);
+        const subject = "please verify your mail "
+        const message = `Thanks for your intrest .Kindly fill the below otp to get start \n
+        Your OTP is ${otp} . Only Valid For Next 5 min `
+        console.log(`genrated ${otp} for ${email}`);
+        const sendMailRes = await sendMail(
+            subject,
+            message,
+            email
+        )
+        console.log(sendMailRes);
+
+        if (!sendMail) {
+            throw new apiError(
+                "Failed to send mail",
+                400,)
+        }
+        return res
+            .status(200)
+            .json(
+                new apiResponse(
+                    200,
+                    otp,
+                    `An Otp sent to ${email}`
+
+                )
+            )
+    } catch (error) {
+        if (error instanceof apiError) {
+            return res.
+                status(error.statusCode)
+                .json(
+                    new apiResponse(
+                        error.statusCode,
+                        null,
+                        error.message
+                    )
+                )
+        } else {
+            return res.status(500)
+                .json(
+                    new apiResponse(
+                        500,
+                        null,
+                        error.message
+                    )
+
+                )
+        }
+
+    }
+})
+const googleLogin = asyncHandler(async (req, res) => {
+    const { code } = req.query
+    try {
+        const googleres = await oauth2Client.getToken(code);
+        oauth2Client.setCredentials(googleres.tokens)
+        const userRes = await axios.get(`https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=${googleres.tokens.access_token}`)
+        const { email, name } = userRes.data;
+        const user = await User.findOne({ email })
+        if (!user) {
+            const loggedInUser = await User.create(
+                {
+                    email,
+                    firstName: name,
+                    isEmailVerified: true,
+
+                }
+            )
+            const { accessToken, refreshtoken } = await genrateAccessAndRefreshToken(loggedInUser._id)
+            const accessTokenExpiryTime = new Date().getTime() + (Number(process.env.ACCESS_TOKEN_SECRET_KEY_EXPIRY) || 1) * 24 * 60 * 60 * 1000;
+
+            const refreshTokenExpiryTime = new Date().getTime() + (Number(process.env.REFRESH_TOKEN_SECRET_KEY_EXPIRY) || 10) * 24 * 60 * 60 * 1000;
+
+            return res
+                .status(201)
+                .cookie("accessToken", accessToken, options)
+                .cookie("refreshToken", refreshtoken, options)
+                .json(new apiResponse
+                    (200,
+                        {
+                            loggedInUser, accessToken, refreshtoken, accessTokenExpiryTime, refreshTokenExpiryTime
+                        }
+                        ,
+                        "User LoggedIn successfully"))
+        }
+
+
+        const { accessToken, refreshtoken } = await genrateAccessAndRefreshToken(user._id)
+        const accessTokenExpiryTime = new Date().getTime() + (Number(process.env.ACCESS_TOKEN_SECRET_KEY_EXPIRY) || 1) * 24 * 60 * 60 * 1000;
+        console.log(accessTokenExpiryTime);
+        const refreshTokenExpiryTime = new Date().getTime() + (Number(process.env.REFRESH_TOKEN_SECRET_KEY_EXPIRY) || 10) * 24 * 60 * 60 * 1000;
+        console.log(refreshTokenExpiryTime);
+        const loggedInUser = await User.findById(user._id).select("-refreshtoken")
+        return res
+            .status(200)
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", refreshtoken, options)
+            .json(new apiResponse
+                (200,
+                    {
+                        loggedInUser, accessToken, refreshtoken, accessTokenExpiryTime, refreshTokenExpiryTime
+
+                    }
+                )
+            )
+    } catch (error) {
+        if (error instanceof apiError) {
+            return res.
+                status(error.statusCode)
+                .json(
+                    new apiResponse(
+                        error.statusCode,
+                        null,
+                        error.message
+                    )
+                )
+        } else {
+            return res.status(500)
+                .json(
+                    new apiResponse(
+                        500,
+                        null,
+                        error.message
+                    )
+
+                )
+        }
+
+    }
+
+})
+
 const userLogout = asyncHandler(async (req, res) => {
     const user = req.user
-    await User.findByIdAndUpdate(
-        user._id,
-        {
-            $set: {
-                refreshtoken: null
+    try {
+        await User.findByIdAndUpdate(
+            user._id,
+            {
+                $set: {
+                    refreshtoken: null
+                }
+            },
+            {
+                new: true
             }
-        },
-        {
-            new: true
+        )
+        return res
+            .status(200)
+            .clearCookie("accessToken")
+            .clearCookie("refreshToken")
+            .json(new apiResponse(200, null, "logged out successfully"))
+    } catch (error) {
+        if (error instanceof apiError) {
+            return res.
+                status(error.statusCode)
+                .json(
+                    new apiResponse(
+                        error.statusCode,
+                        null,
+                        error.message
+                    )
+                )
+        } else {
+            return res.status(500)
+                .json(
+                    new apiResponse(
+                        500,
+                        null,
+                        error.message
+                    )
+
+                )
         }
-    )
-    return res
-        .status(200)
-        .clearCookie("accessToken")
-        .clearCookie("refreshToken")
-        .json(new apiResponse(200, null, "logged out successfully"))
+
+    }
 
 })
 export {
     userRegister,
     userLogin,
     userLogout,
-    verifyOtp
+    verifyOtp,
+    googleLogin,
+    resendOtp
 }
