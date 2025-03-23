@@ -35,6 +35,8 @@ app.use(
 )
 import userRoutes from './routes/user.routes.js'
 import restaturantRoutes from './routes/restaurant.routes.js'
+import adminRoutes from './routes/admin.routes.js'
 app.use('/api/v1/userRoutes' , userRoutes)
 app.use('/api/v1/restaurantRoutes' , restaturantRoutes)
+app.use('/api/v1/adminRoutes' , adminRoutes)
 export default app

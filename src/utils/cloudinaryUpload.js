@@ -10,7 +10,7 @@ cloudinary.config({
 
 
 
-const cloudinaryUpload = async (localpaths) => {
+export const cloudinaryUpload = async (localpaths) => {
     console.log( process.env.CLOUDINARY_CLOUD_NAME,
          process.env.CLOUDINARY_API_KEY,
          process.env.CLOUDINARY_API_SECRET,);
@@ -55,5 +55,12 @@ const cloudinaryUpload = async (localpaths) => {
     }
 };
 
+export const deleteFromCloudinary = async (url) => {
+    try {
+        await cloudinary.uploader.destroy(url);
+    } catch (error) {
+        console.error("Cloudinary Deletion Error:", error);
+    }
+};
 
-export { cloudinaryUpload }
+
