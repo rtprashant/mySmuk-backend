@@ -11,9 +11,17 @@ const dishSchema = new Schema({
         ref: "Package",
         required: true
     },
-    dishName: [{
-        type: String,
-        required: true
+    dishes: [{
+        name: {
+            type: String,
+            required: true
+        },
+        quantity: {
+            type: String,
+            required: true,
+            min: 1
+        }
+
     }],
     category: {
         type: String,
@@ -22,8 +30,15 @@ const dishSchema = new Schema({
     },
     beverages: [
         {
-            type: String,
+            name: {
+                type: String,
+            },
+            quantity: {
+                type: String,
+                min: 1
+            }
         }
+
     ],
 });
 

@@ -7,6 +7,8 @@ import generateOtp from "../utils/otp.js";
 import sendMail from "../utils/sendMail.js";
 import oauth2Client from "../utils/googleConfig.js";
 import axios from 'axios'
+import { Package } from "../models/package.model.js";
+import { Listings } from '../models/lisitng.model.js'
 
 const genrateAccessAndRefreshToken = async function (userId) {
     const user = await User.findById(userId)
@@ -485,11 +487,69 @@ const userLogout = asyncHandler(async (req, res) => {
     }
 
 })
+
+const filterPackages = asyncHandler(async (
+    req, res) => {
+    const { sortBy } = req.body
+    const { id } = req.params
+    try {
+        let query = {packageId : id}
+        let sortOptions = {}
+        if (sortBy === "priceHigh") {
+            sortOptions["price"] = -1; 
+        } else if (sortBy === "priceLow") {
+            sortOptions["price"] = 1; 
+        } else if (sortBy === "rating") {
+            sortOptions["restaurantId.rating"] = 1;
+        }
+        const listings = await Listings.find(query).populate("restaurantId packageId").sort(sortOptions)
+        if (!listings) {
+            throw new apiError(
+                "No listings Found to Filter",
+                404
+            )
+        }
+        return res
+        .status(200)
+        .json(
+            new apiResponse(
+                200,
+                listings,
+                "Sorting SuccessFull"
+            )
+        )
+
+    } catch (error) {
+        if (error instanceof apiError) {
+            return res.
+                status(error.statusCode)
+                .json(
+                    new apiResponse(
+                        error.statusCode,
+                        null,
+                        error.message
+                    )
+                )
+        } else {
+            return res.status(500)
+                .json(
+                    new apiResponse(
+                        500,
+                        null,
+                        error.message
+                    )
+
+                )
+        }
+    }
+
+})
 export {
     userRegister,
     userLogin,
     userLogout,
     verifyOtp,
     googleLogin,
-    resendOtp
+    resendOtp,
+    filterPackages
 }

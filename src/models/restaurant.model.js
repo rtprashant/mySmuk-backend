@@ -22,6 +22,9 @@ const restaurantSchema = new Schema({
         type : String,
         required : true
     },
+    rating : {
+        type : Number
+    },
     foodImage : {
         type : [String],
         required : true

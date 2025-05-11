@@ -19,6 +19,7 @@ const listingSchema = new Schema(
         },
         meal: [{
             type: mongoose.Schema.Types.ObjectId,
+            default: [],
             ref: "Dish"
         }],
         info: {

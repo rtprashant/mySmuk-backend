@@ -1,4 +1,5 @@
 
+import { log } from "console";
 import { Dish } from "../models/dish.model.js";
 import { Listings } from "../models/lisitng.model.js";
 import { Package } from "../models/package.model.js";
@@ -198,14 +199,14 @@ const deletePackage = asyncHandler(async (req, res) => {
 const addDish = asyncHandler(async (req, res) => {
     const {
         packageName,
-        dishName,
+        dishes,
         category,
         beverages } = req.body
     const { restaurantId } = req.params
     console.log(restaurantId);
 
     try {
-        if (!packageName || !dishName || !category) {
+        if (!packageName || !dishes || !category) {
             throw new apiError(
                 "Required Fileds Not Found",
                 404
@@ -231,9 +232,32 @@ const addDish = asyncHandler(async (req, res) => {
             packageId: selectedPackage._id,
             category,
             restaurantId,
-            dishName,
+            dishes,
             beverages
         })
+        const listing = await Listings.findOne({ restaurantId });
+        console.log(listing);
+        
+        if (!listing) {
+            console.error("Listing not found");
+            return;
+        }
+        
+        if (!listedDish || !listedDish._id) {
+            console.error("listedDish or listedDish._id is missing");
+            return;
+        }
+        
+        listing.meal.push(listedDish._id);
+        console.log("Updated meal array:", listing.meal);
+        
+        await listing.save();
+        console.log("Listing updated successfully:", listing);
+
+      
+        
+       
+        
         return res
             .status(201)
             .json(
@@ -311,6 +335,8 @@ const addListing = asyncHandler(async (req, res) => {
             restaurantId,
             packageId: selectedPackage._id,
         })
+        console.log(`meal is :${meal}`);
+        
         if (!meal.length > 0) {
             throw new apiError(
                 "No Meal Found Kindly Add Meal First",
@@ -407,6 +433,49 @@ const getAllListing = asyncHandler(async (req, res) => {
     }
 
 })
+const getListingById = asyncHandler(async(req , res)=>{
+    const { id } = req.params
+    try {
+        const listingInfo = await Listings.findById(id).populate("restaurantId meal");
+        if(!listingInfo){
+            throw new apiError (
+                "No information found",
+                404
+            )
+        }
+        return res
+        .status(200)
+        .json(
+            new apiResponse(
+                200,
+                listingInfo,
+                "Listing Info Fatched Successfully"
+            )
+        )
+    } catch (error) {
+        if (error instanceof apiError) {
+            return res.
+                status(error.statusCode)
+                .json(
+                    new apiResponse(
+                        error.statusCode,
+                        null,
+                        error.message
+                    )
+                )
+        } else {
+            return res.status(500)
+                .json(
+                    new apiResponse(
+                        500,
+                        null,
+                        error.message
+                    )
+                )
+        }
+        
+    }
+})
 const getAllRes = asyncHandler(async (_, res) => {
     try {
         const allRestaurants = await Restaurant.find().select("restName _id");
@@ -451,5 +520,6 @@ export {
     addDish,
     addListing,
     getAllListing,
-    getAllRes
+    getAllRes,
+    getListingById
 }
