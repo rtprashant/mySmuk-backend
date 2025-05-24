@@ -9,6 +9,7 @@ import oauth2Client from "../utils/googleConfig.js";
 import axios from 'axios'
 import { Package } from "../models/package.model.js";
 import { Listings } from '../models/lisitng.model.js'
+import { Orders } from "../models/order.model.js";
 
 const genrateAccessAndRefreshToken = async function (userId) {
     const user = await User.findById(userId)
@@ -81,7 +82,7 @@ const userRegister = asyncHandler(async (req, res) => {
         )
         console.log(sendMailRes);
 
-        if (!sendMail) {
+        if (!sendMailRes) {
             throw new apiError(
                 "Failed to send mail",
                 400,)
@@ -493,12 +494,12 @@ const filterPackages = asyncHandler(async (
     const { sortBy } = req.body
     const { id } = req.params
     try {
-        let query = {packageId : id}
+        let query = { packageId: id }
         let sortOptions = {}
         if (sortBy === "priceHigh") {
-            sortOptions["price"] = -1; 
+            sortOptions["price"] = -1;
         } else if (sortBy === "priceLow") {
-            sortOptions["price"] = 1; 
+            sortOptions["price"] = 1;
         } else if (sortBy === "rating") {
             sortOptions["restaurantId.rating"] = 1;
         }
@@ -510,14 +511,14 @@ const filterPackages = asyncHandler(async (
             )
         }
         return res
-        .status(200)
-        .json(
-            new apiResponse(
-                200,
-                listings,
-                "Sorting SuccessFull"
+            .status(200)
+            .json(
+                new apiResponse(
+                    200,
+                    listings,
+                    "Sorting SuccessFull"
+                )
             )
-        )
 
     } catch (error) {
         if (error instanceof apiError) {
@@ -544,6 +545,99 @@ const filterPackages = asyncHandler(async (
     }
 
 })
+
+const placeOrder = asyncHandler(async (req, res) => {
+    const { timeSlot, mealType, date , phone } = req.body
+    const { listingId } = req.params
+    const user = req.user
+    console.log(user);
+
+    try {
+        if (!timeSlot || !mealType || !listingId) {
+            throw new apiError(
+                "All fields are required", 400
+            )
+        }
+
+        const alreadyPlacedOrderInTimeSlot = await Orders.findOne({ listingId, timeSlot, date })
+        if (alreadyPlacedOrderInTimeSlot) {
+            throw new apiError(
+                "Please select diffrent time slot", 400
+            )
+        }
+        const order = await Orders.create({
+            customer: user,
+            timeSlot,
+            listingId,
+            mealType,
+            date,
+            phone
+        })
+        if (!order) {
+            throw new apiError(
+                "Something went wrong while placing order", 400
+            )
+        }
+        const listing = await Listings.findById(listingId).populate("restaurantId");
+
+        if (!listing) {
+            throw new apiError(404, "Listing not found");
+        }
+
+        const restaurantDetails = listing.restaurantId;
+        console.log("restaurant details" , restaurantDetails);
+        const admins = await User.find({ userType: "admin" });
+        console.log("admins" , admins);
+        
+        const subject = "Order Placed Successfully"
+        const message = `Order Details \n order id : ${order._id} \n Date : ${order.date} \n Restuarant name : ${restaurantDetails.restName}
+        \n Restuarant email : ${restaurantDetails.restEmail} \n Restuarant Mobile : ${restaurantDetails.restMobile}  \n Restuarant address : ${restaurantDetails.restAddress}`
+        const sendMailRes = await sendMail(
+            subject,
+            message,
+            [user.email , restaurantDetails.restEmail  ]
+
+        )
+        console.log(sendMailRes);
+
+        if (!sendMailRes) {
+            throw new apiError(
+                "Failed to send mail",
+                400,)
+        }
+        return res.
+            status(201)
+            .json(
+                new apiResponse(
+                    201,
+                    order,
+                    "Order placed successfully"
+                )
+            )
+    } catch (error) {
+        if (error instanceof apiError) {
+            return res.
+                status(error.statusCode)
+                .json(
+                    new apiResponse(
+                        error.statusCode,
+                        null,
+                        error.message
+                    )
+                )
+        } else {
+            return res.status(500)
+                .json(
+                    new apiResponse(
+                        500,
+                        null,
+                        error.message
+                    )
+
+                )
+        }
+    }
+})
 export {
     userRegister,
     userLogin,
@@ -551,5 +645,6 @@ export {
     verifyOtp,
     googleLogin,
     resendOtp,
-    filterPackages
+    filterPackages,
+    placeOrder
 }

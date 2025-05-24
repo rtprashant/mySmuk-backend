@@ -17,6 +17,9 @@ const listingSchema = new Schema(
             type: String,
             required: true,
         },
+        timeSlot: {
+            type: String,
+        },
         meal: [{
             type: mongoose.Schema.Types.ObjectId,
             default: [],
