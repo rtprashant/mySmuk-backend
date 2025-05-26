@@ -195,6 +195,8 @@ const verifyOtp = asyncHandler(async (req, res) => {
                 )
             )
     } catch (error) {
+        console.log(error);
+        
         if (error instanceof apiError) {
             return res.
                 status(error.statusCode)
