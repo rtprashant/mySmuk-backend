@@ -4,6 +4,7 @@ dotenv.config(
         path: ".env"
     }
 )
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 import dbConnection from './database/dbConnection.js'
 import app from './app.js'
 const port = process.env.PORT

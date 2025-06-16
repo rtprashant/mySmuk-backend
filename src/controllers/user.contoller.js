@@ -196,7 +196,7 @@ const verifyOtp = asyncHandler(async (req, res) => {
             )
     } catch (error) {
         console.log(error);
-        
+
         if (error instanceof apiError) {
             return res.
                 status(error.statusCode)
@@ -549,7 +549,7 @@ const filterPackages = asyncHandler(async (
 })
 
 const placeOrder = asyncHandler(async (req, res) => {
-    const { timeSlot, mealType, date , phone } = req.body
+    const { timeSlot, mealType, date, phone } = req.body
     const { listingId } = req.params
     const user = req.user
     console.log(user);
@@ -587,17 +587,18 @@ const placeOrder = asyncHandler(async (req, res) => {
         }
 
         const restaurantDetails = listing.restaurantId;
-        console.log("restaurant details" , restaurantDetails);
+        console.log("restaurant details", restaurantDetails);
         const admins = await User.find({ userType: "admin" });
-        console.log("admins" , admins);
-        
+        const adminEmails = admins.map(admin => admin.email);
+        console.log("admins", ...adminEmails);
+
         const subject = "Order Placed Successfully"
         const message = `Order Details \n order id : ${order._id} \n Date : ${order.date} \n Restuarant name : ${restaurantDetails.restName}
         \n Restuarant email : ${restaurantDetails.restEmail} \n Restuarant Mobile : ${restaurantDetails.restMobile}  \n Restuarant address : ${restaurantDetails.restAddress}`
         const sendMailRes = await sendMail(
             subject,
             message,
-            [user.email , restaurantDetails.restEmail  ]
+            [user.email, restaurantDetails.restEmail , ...adminEmails]
 
         )
         console.log(sendMailRes);
