@@ -118,11 +118,12 @@ const restaurantRegister = asyncHandler(async (req, res) => {
     if (!restFssaiImage) {
         throw new apiError("Please upload restaurant fssai image", 400)
     }
-    const restImageUpload = await cloudinaryUpload(restImage)?.map((img)=>img.secure_url)
-    const restPanImageUpload = await cloudinaryUpload(restPanImage)?.map((img)=>img.secure_url)
-    const restGstImageUpload = await cloudinaryUpload(restGstImage)?.map((img)=>img.secure_url)
-    const restFssaiImageUpload = await cloudinaryUpload(restFssaiImage)?.map((img)=>img.secure_url)
-    const foodImageUpload = await cloudinaryUpload(foodImage)?.map((img)=>img.secure_url)
+    
+    const restImageUpload = await cloudinaryUpload(restImage)
+    const restPanImageUpload = await cloudinaryUpload(restPanImage)
+    const restGstImageUpload = await cloudinaryUpload(restGstImage)
+    const restFssaiImageUpload = await cloudinaryUpload(restFssaiImage)
+    const foodImageUpload = await cloudinaryUpload(foodImage)
     
     if (!restImageUpload) {
         throw new apiError("Failed to upload restaurant image", 400)
@@ -139,6 +140,7 @@ const restaurantRegister = asyncHandler(async (req, res) => {
     if (!restFssaiImageUpload) {
         throw new apiError("Failed to upload Fssai Card", 400)
     }
+    
     const newRest = await Restaurant.create({
         restName,
         restEmail,
@@ -158,11 +160,11 @@ const restaurantRegister = asyncHandler(async (req, res) => {
         bankAccType,
         bankName,
         password,
-        restImage,
-        foodImage,
-        restPanImage,
-        restGstImage,
-        restFssaiImage,
+        restImage: restImageUpload.map((img) => img.secure_url),
+        foodImage: foodImageUpload.map((img) => img.secure_url),
+        restPanImage: restPanImageUpload[0]?.secure_url,
+        restGstImage: restGstImageUpload[0]?.secure_url,
+        restFssaiImage: restFssaiImageUpload[0]?.secure_url,
     })
     const response = await Restaurant.findById(newRest._id).select("-password -refreshToken")
     return res

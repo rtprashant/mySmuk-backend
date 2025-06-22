@@ -13,14 +13,14 @@ app.use(
 
 app.use(
     express.urlencoded({
-        limit:"32kb",
+        limit:"50mb",
         extended:true
     })
 )
 app.use(
     express.json(
         {
-            limit:"32kb",
+            limit:"50mb",
             
         }
     )
